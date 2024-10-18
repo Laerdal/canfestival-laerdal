@@ -201,7 +201,7 @@ void EMCY_errorRecovered(CO_Data* d, UNS16 errCode)
 {
 	UNS8 index;
 	UNS8 errRegister_tmp;
-	UNS8 anyActiveError = 0;
+	UNS8 activeErrors = 0;
 	
 	for (index = 0; index < EMCY_MAX_ERRORS; ++index)
 		if (d->error_data[index].errCode == errCode) break;		/* find the position of the error */
@@ -215,15 +215,21 @@ void EMCY_errorRecovered(CO_Data* d, UNS16 errCode)
 		for (index = 0, errRegister_tmp = 0; index < EMCY_MAX_ERRORS; ++index)
 			if (d->error_data[index].active == 1)
 			{
-				anyActiveError = 1;
+				activeErrors += 1;
 				errRegister_tmp |= d->error_data[index].errRegMask;
 			}
-		if(anyActiveError == 0)
+		if(activeErrors == 0)
 		{
 			d->error_state = Error_free;
 			/* send a EMCY message with code "Error Reset or No Error" */
 			if (d->CurrentCommunicationState.csEmergency)
 				sendEMCY(d, 0x0000, 0x00, NULL);
+		}
+		else 
+		{
+			/* send EMCY message with code "Error Reset" and activeErrors reflects the remaining errors  */
+			if (d->CurrentCommunicationState.csEmergency)
+				sendEMCY(d, 0x0000, activeErrors, NULL);
 		}
 		*d->error_register = errRegister_tmp;
 	}
